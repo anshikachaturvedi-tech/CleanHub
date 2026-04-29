@@ -5,6 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
+     "build": "vite build",
+  "preview": "vite preview"
     "start": "node src/index.js",
     "test": "node --test src/orderLifecycle.test.js",
     "db:push": "prisma db push",
