@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Status values enforced in API: RECEIVED | PROCESSING | READY | DELIVERED (new orders use PROCESSING)
+model Order {
+  id                    String    @id @default(uuid())
+  customerName          String
+  phone                 String
+  status                String    @default("PROCESSING")
+  totalAmount           Float
+  estimatedDeliveryDate DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  lines                 OrderLine[]
+}
+
+model OrderLine {
+  id           String  @id @default(uuid())
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  garmentType  String
+  quantity     Int
+  pricePerItem Float
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String?
+  email        String?
+  phone        String?
+  role         String   @default("user")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

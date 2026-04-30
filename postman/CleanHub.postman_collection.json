@@ -1,0 +1,88 @@
+{
+  "info": {
+    "name": "CleanHub Laundry API",
+    "description": "Mini laundry order management — point {{base}} at http://localhost:3001 (or your deployed host).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base", "value": "http://localhost:3001" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base}}/api/health"
+      }
+    },
+    {
+      "name": "Dashboard",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base}}/api/dashboard"
+      }
+    },
+    {
+      "name": "Garment prices (defaults)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base}}/api/garment-prices"
+      }
+    },
+    {
+      "name": "List orders (filters optional)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base}}/api/orders?status=&q=&garment=",
+          "host": ["{{base}}"],
+          "path": ["api", "orders"],
+          "query": [
+            { "key": "status", "value": "" },
+            { "key": "q", "value": "" },
+            { "key": "garment", "value": "" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"Demo User\",\n  \"phone\": \"9876501234\",\n  \"estimatedDeliveryDate\": null,\n  \"items\": [\n    { \"garmentType\": \"Shirt\", \"quantity\": 2, \"pricePerItem\": 80 },\n    { \"garmentType\": \"Pants\", \"quantity\": 1, \"pricePerItem\": 100 }\n  ]\n}"
+        },
+        "url": "{{base}}/api/orders"
+      }
+    },
+    {
+      "name": "Get order by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base}}/api/orders/:id",
+        "variable": [
+          { "key": "id", "value": "REPLACE_WITH_UUID" }
+        ]
+      }
+    },
+    {
+      "name": "Update order status",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"READY\"\n}" },
+        "url": "{{base}}/api/orders/:id/status",
+        "variable": [
+          { "key": "id", "value": "REPLACE_WITH_UUID" }
+        ]
+      }
+    }
+  ]
+}
