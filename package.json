@@ -8,10 +8,8 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=frontend",
-    "start:prod": "NODE_ENV=production node backend/src/index.js",
-    "db:push": "npm run db:push --workspace=backend",
-    "db:seed": "npm run db:seed --workspace=backend",
-    "db:studio": "npm run db:studio --workspace=backend"
+    "start": "node backend/src/index.js",
+    "db:push": "npm run db:push --workspace=backend"
   },
   "engines": {
     "node": ">=16.14.0"
