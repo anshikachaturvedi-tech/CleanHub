@@ -101,7 +101,7 @@ cleanhub/
 ### Step 1 — Clone & Install
 
 ```bash
-git clone https://github.com/<your-username>/cleanhub.git
+git clone https://github.com/anshikachaturvedi-tech/CleanHub.git
 cd cleanhub
 npm install
 ```
