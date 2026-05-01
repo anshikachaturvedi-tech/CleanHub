@@ -1,221 +1,509 @@
-# CleanHub — Mini laundry order management
+# CleanHub — Mini Laundry Order Management System
 
-Dry-cleaning style order flow: create orders (customer, phone, line items with per–garment price), track **RECEIVED → PROCESSING → READY → DELIVERED**, list with filters, and a small **dashboard** (count, revenue, counts per status).
-
-- **UI:** React (Vite) — tabbed **Dashboard**, **New order**, **Orders**
-- **API:** Node.js (Express) + **Prisma** + **MySQL** (suits DBeaver, a real server, and production; you can also use MariaDB)
-- **Extras implemented:** default garment **price list** (configurable in code + API), **search by garment type** on the order list, **estimated delivery date** per order, **Postman** collection
+> **Assignment submission** — AI-First Full Stack Development Task  
+> **Live Demo:** [https://backend-production-93f6.up.railway.app](https://backend-production-93f6.up.railway.app)  
+> **Stack:** React 18 (Vite 4) · Node.js (Express) · Prisma 5 · MySQL · Railway
 
 ---
 
-## Repository layout (frontend vs backend)
+## Table of Contents
 
-This project is an **npm workspaces** monorepo: two packages at the repo root, no shared application code between them (the browser talks to the API over HTTP).
-
-| Location | Role | What to deploy |
-|----------|------|----------------|
-| **`frontend/`** | **Frontend** — React (Vite), runs in the browser | Build output: **`frontend/dist/`** after `npm run build`. Optionally set `VITE_API_URL` when the API is on another origin (see `frontend/.env.example`). |
-| **`backend/`** | **Backend** — Node (Express) + Prisma + MySQL | Run **`backend/src/index.js`** with `DATABASE_URL` set. In production with `NODE_ENV=production`, the same process can also **serve** `frontend/dist` (see `npm run start:prod` at repo root). |
-
-**Useful paths (not exhaustive):**
-
-```text
-cleanhub/
-├── package.json          # root scripts: dev, build, start:prod, db:*
-├── frontend/             # FRONTEND workspace
-│   ├── src/              # React app (App.jsx, AuthPages, api.js, styles, …)
-│   ├── index.html
-│   ├── vite.config.js    # dev proxy: /api → API port
-│   └── dist/             # created by `npm run build` (static assets)
-├── backend/              # BACKEND workspace
-│   ├── src/              # Express app (index.js, routes, auth, order lifecycle)
-│   ├── prisma/           # schema.prisma, seed.js, init.sql
-│   ├── .env.example      # DATABASE_URL template (copy to .env)
-│   └── .env              # local secrets (gitignored)
-└── README.md
-```
-
-Root **`node_modules/`** holds hoisted dependencies for workspaces; **`frontend/node_modules`** / **`backend/node_modules`** may appear for tooling. **Do not commit** `.env` files or secrets.
-
-More detail: **`frontend/README.md`** (UI build and env) and **`backend/README.md`** (API, database, Prisma).
+1. [Features Implemented](#features-implemented)
+2. [Project Structure](#project-structure)
+3. [Setup Instructions (Local)](#setup-instructions-local)
+4. [Deployment Guide (Railway)](#deployment-guide-railway)
+5. [API Reference](#api-reference)
+6. [Default Garment Prices](#default-garment-prices)
+7. [Postman Collection](#postman-collection)
+8. [AI Usage Report](#ai-usage-report)
+9. [Tradeoffs & Future Improvements](#tradeoffs--future-improvements)
 
 ---
 
-## Setup (local)
+## Features Implemented
 
-**Requirements:** Node **16.14+** (Node **18+** recommended; assignment CI may use 18+).
+### Core (Required)
 
-1. **Clone and install**
+| Feature | Status | Notes |
+|--------|--------|-------|
+| Create order — name, phone, garments, qty, price | ✅ | Supports multiple garment line items per order |
+| Unique Order ID + total bill amount | ✅ | UUID primary key; total calculated server-side in ₹ |
+| Status flow: RECEIVED → PROCESSING → READY → DELIVERED | ✅ | New orders default to `PROCESSING`; click badge or "Set Status" in UI |
+| Update order status | ✅ | `PATCH /api/orders/:id/status` |
+| List all orders | ✅ | Table view with all order details and line items |
+| Filter by status | ✅ | Dropdown filter on orders list |
+| Filter by customer name / phone | ✅ | Substring search via `?q=` |
+| Dashboard — total orders, total revenue, orders per status | ✅ | All four statuses always shown (zeros filled in) |
 
-   ```bash
-   git clone <your-repo-url> cleanhub
-   cd cleanhub
-   cp backend/.env.example backend/.env
-   npm install
-   ```
+### Bonus (Optional — All Implemented)
 
-2. **Create / sync the database** (MySQL or MariaDB 5.7+ / 8+)
-
-   1. Start **MySQL** and create a user with access to a database named **`cleanhub`** (or use `root` for local dev only).
-   2. Copy `cp backend/.env.example backend/.env` and set:
-
-      ```env
-      DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/cleanhub"
-      ```
-
-   **Option A — You run SQL in DBeaver (or any client)** — good for the assignment write-up
-
-   - New **MySQL** connection in DBeaver to your server; open an **SQL script** and run `backend/prisma/init.sql` (it creates `cleanhub` and tables **`Order`**, **`OrderLine`**, **`User`**).
-   - Ensure **`backend/.env`** matches host, port, user, password, and database **`cleanhub`**.
-
-   **Option B — Prisma creates tables from `schema.prisma`**
-
-   ```bash
-   npm run db:push
-   ```
-
-   If the database **`cleanhub`** does not exist yet, create it once (`CREATE DATABASE cleanhub;`) then run `db:push`.
-
-   **Seed the demo admin user** (required for login: `admin` / `cleanhub`):
-
-   ```bash
-   npm run db:seed
-   ```
-
-   Then generate the client (if you have not already):
-
-   ```bash
-   cd backend && npx prisma generate && cd ..
-   ```
-
-   *(Run `generate` after changing providers or schema.)*
-
-3. **Run in development (API + Vite, with proxy to API)**
-
-   ```bash
-   npm run dev
-   ```
-
-   - API: <http://localhost:3001>
-   - UI: <http://localhost:5173> (proxies `/api` → 3001)
-
-4. **Production-style single process (optional)** — build the frontend, then serve the API + static UI on one port:
-
-   ```bash
-   npm run build
-   npm run start:prod
-   ```
-
-   Open <http://localhost:3001>. The Express app serves `frontend/dist` when `NODE_ENV=production`.
+| Bonus Feature | Status | Notes |
+|--------------|--------|-------|
+| React frontend (Vite 4) | ✅ | Tabbed UI: Dashboard, New Order, Orders, Users |
+| Authentication + admin roles | ✅ | Login required; admin routes protected via DB role check |
+| MySQL database with Prisma ORM | ✅ | Models: `Order`, `OrderLine`, `User` |
+| Search by garment type | ✅ | `?garment=` filter — searches across all line items |
+| Estimated delivery date | ✅ | Auto-set if omitted; editable via `PATCH /api/orders/:id` |
+| Deployed on Railway | ✅ | Single service: API + React static files |
 
 ---
 
-## Features implemented
+## Project Structure
 
-| Feature | Notes |
-|--------|--------|
-| Create order | Name, phone, one or more garment lines (type, quantity, **price per item**), optional **estimated delivery** |
-| **Total + order id** | Response includes `orderId` (UUID), `totalBillAmount` (₹) |
-| Status flow | `RECEIVED` → `PROCESSING` → `READY` → `DELIVERED` — **click badge** or “Set status” in the list |
-| List + filters | **Status**, **name/phone** substring, **garment** substring (any line) |
-| Dashboard | Total orders, total **revenue** (sum of `totalAmount` on all orders), **orders per status** (zeros filled in) |
-| Garment price defaults | `GET /api/garment-prices` and `backend/src/prices.js` (same list as UI dropdown) |
-| **Users (CRUD)** | MySQL `User` model; **Users** tab and `/api/users*` are **admin-only**. The login screen has **no public sign-up**; new accounts are created by an admin (Users tab) or via **`POST /api/auth/register`** if you call the API directly. |
-
-**Skipped (by design, keep scope small):** real JWTs, payments, email/SMS, print receipts. Role checks use **headers + DB lookup** suitable for a demo, not for production.
-
-**With more time:** PostgreSQL in prod, real migrations (`prisma migrate`), price table in DB, role-based access, tests (Jest/Playwright), and deploy (Render/Railway) with managed DB.
-
----
-
-## API (quick reference)
-
-| Method | Path | |
-|--------|------|---|
-| `GET` | `/api/health` | liveness |
-| `GET` | `/api/garment-prices` | default prices map |
-| `GET` | `/api/dashboard` | `totalOrders`, `totalRevenue`, `ordersByStatus` (counts match stored rows; status is not auto-changed on this request) |
-| `GET` | `/api/orders?status=&q=&garment=` | list; `q` = name or phone contains |
-| `GET` | `/api/orders/:id` | one order with lines |
-| `POST` | `/api/orders` | body: `customerName`, `phone`, `items[]` (`garmentType`, `quantity`, `pricePerItem`), optional `estimatedDeliveryDate` (ISO) |
-| `PATCH` or `POST` | `/api/orders/:id/status` | body: `{ "status": "READY" }` etc. (the web app uses PATCH; POST on 405 only). Restart the API after pulling so both methods are registered. |
-| `POST` | `/api/auth/login` | body: `{ "username", "password" }` → `{ user }` (includes `id` for session headers) |
-| `POST` | `/api/auth/register` | optional API-only registration: `username`, `password`, optional profile fields → creates `role: user` (not exposed in the app UI) |
-| `GET` | `/api/users` | list users — **admin only** (requires `X-Cleanhub-User-Id` header = DB user id with `role: admin`) |
-| `POST` | `/api/users` | admin creates user — same body as register — **admin only** |
-| `GET` | `/api/users/:id` | one user — **admin only** |
-| `PATCH` | `/api/users/:id` | update — **admin only** |
-| `DELETE` | `/api/users/:id` | delete (blocked for seeded `admin`) — **admin only** |
-| `DELETE` | `/api/orders/:id` | delete order (cascades lines) — **admin only** |
-
-**Demo auth headers:** After login, the UI sends `X-Cleanhub-User-Id` (and username/role) on admin routes. The server re-checks the database row is `admin`. This is for the assignment only, not production security.
-
-Import **`postman/CleanHub.postman_collection.json`** into Postman. Set the `base` variable to your host (e.g. `http://localhost:3001`).
-
-**React → API in dev:** Vite proxy; for a separate browser origin, set in `frontend` a `.env` with `VITE_API_URL=http://localhost:3001` (optional — empty uses same origin with proxy when using `npm run dev`).
-
-**Status field:** `Order.status` is stored as a **string** (four allowed values). You could switch to a MySQL `ENUM` later in pure SQL; Prisma here keeps it simple and validates in the API.
-
----
-
-## Tradeoffs
-
-- **MySQL** matches tools like **DBeaver**, behaves like production, and avoids SQLite-specific limits.
-- **String status** keeps Prisma portable; the API enforces the four workflow values.
-- **UI** uses a small set of tabs (including **Users** CRUD); not a router-heavy SPA.
-- **No tests** in this timebox; API was smoke-tested manually and with Postman.
-- **Public GitHub link:** you must create the remote repository and `git push` (no account access from this environment).
-
----
-
-## AI usage report (fill in for your submission)
-
-*You are required to document use of AI tools. Replace the sample bullets with your own.*
-
-**Tools used e.g.:** ChatGPT, Cursor, GitHub Copilot, …
-
-**Where AI helped (examples of prompts you can use / adapt):**
-
-- *“Scaffold a Node Express API with Prisma 5, MySQL, Order + OrderLine models, REST create/list/patch, no ORM abstractions past Prisma.”*
-- *“Add React Vite app with a dashboard and table filters for status, customer, garment.”*
-- *“Add estimated delivery to orders and a garment price map shared by API and UI.”*
-
-**What the model got wrong (examples — be honest in your own report):**
-
-- First suggestions may pick **SQLite** for a quick demo; for **DBeaver + real SQL** the project uses **MySQL** and a hand-run `init.sql`.
-- Suggested **Node 18+ Prisma 6** while a machine still runs **Node 16** — the fix was pinning **Prisma 5.22** and Vite 4, or **upgrading Node to 20 LTS**.
-
-**What you changed manually or reviewed:**
-
-- Final schema, API error handling, UI layout/CSS, and README/Postman. Always **run** `npm run db:push` and a quick **curl/Postman** after codegen.
-
----
-
-## Repository layout
+This is an **npm workspaces monorepo**. Frontend and backend are separate packages that communicate over HTTP.
 
 ```
 cleanhub/
-├── frontend/               # Vite + React
+├── package.json                        # Root scripts: dev, build, start:prod, db:*
+├── package-lock.json
+├── .gitignore
+├── README.md
+│
 ├── backend/
-│   ├── prisma/schema.prisma
-│   ├── src/index.js         # API + static (production)
-│   └── src/prices.js
-├── postman/
-│   └── CleanHub.postman_collection.json
-└── package.json            # `npm run dev` from root
+│   ├── src/
+│   │   ├── index.js                    # Express entry: all API routes + static file serving (production)
+│   │   ├── prices.js                   # Default garment price list (₹), also served via GET /api/garment-prices
+│   │   ├── authMiddleware.js           # requireAdmin — re-validates X-Cleanhub-User-Id against DB
+│   │   ├── usersRoutes.js              # Admin-only CRUD routes for /api/users
+│   │   └── orderLifecycle.js           # defaultEstimatedDeliveryFromNow() helper
+│   ├── prisma/
+│   │   ├── schema.prisma               # Order, OrderLine, User models (MySQL, Prisma 5)
+│   │   ├── seed.js                     # Creates admin user: username=admin, password=cleanhub
+│   │   └── init.sql                    # Raw SQL alternative — run manually in DBeaver
+│   ├── .env.example                    # DATABASE_URL template
+│   ├── package.json
+│   └── README.md
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx                     # All pages in a tabbed layout
+│   │   └── api.js                      # All fetch calls to the backend
+│   ├── index.html
+│   ├── vite.config.js                  # Dev proxy: /api → localhost:3001
+│   ├── .env.example                    # VITE_API_URL (optional, for separate-origin deploys)
+│   ├── package.json
+│   └── README.md
+│
+└── postman/
+    └── CleanHub.postman_collection.json
 ```
-
-### Public GitHub link (you)
-
-After you push, replace this section with: **Repository:** `https://github.com/<user>/<repo>`
-
-### Demo
-
-- Loom/screen recording of **create order → list → change status → dashboard** (optional), or
-- This README + Postman = sufficient per many rubrics; add screenshots if the assignment requires them.
 
 ---
 
-## License
+## Setup Instructions (Local)
 
-MIT (or your org’s default) — set as needed for the course.
+### Prerequisites
+
+- **Node.js 16.14+** (Node 18 LTS recommended)
+- **MySQL 5.7+ or 8+** (or MariaDB)
+- **Git**
+
+### Step 1 — Clone & Install
+
+```bash
+git clone https://github.com/<your-username>/cleanhub.git
+cd cleanhub
+npm install
+```
+
+This installs dependencies for both the `frontend` and `backend` workspaces from the root.
+
+### Step 2 — Configure Environment
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Open `backend/.env` and set your MySQL connection string:
+
+```env
+DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/cleanhub"
+```
+
+### Step 3 — Create the Database
+
+Run this once in MySQL to create the database:
+
+```sql
+CREATE DATABASE cleanhub;
+```
+
+Then create the tables using one of these two options:
+
+**Option A — DBeaver (or any SQL client):**
+
+1. Open your MySQL connection in DBeaver
+2. Open a new SQL Script tab
+3. Run the file `backend/prisma/init.sql` — creates `Order`, `OrderLine`, and `User` tables
+
+**Option B — Prisma CLI:**
+
+```bash
+npm run db:push
+```
+
+### Step 4 — Generate Prisma Client
+
+```bash
+cd backend && npx prisma generate && cd ..
+```
+
+Run this once after setup, and again any time `schema.prisma` changes.
+
+### Step 5 — Seed the Admin User
+
+```bash
+npm run db:seed
+```
+
+This creates the default login account:
+
+| Username | Password |
+|----------|----------|
+| `admin` | `cleanhub` |
+
+### Step 6 — Start the App
+
+```bash
+npm run dev
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend (React + Vite) | http://localhost:5173 |
+| Backend (Express API) | http://localhost:3001 |
+
+Vite's dev server proxies all `/api` requests from port 5173 to 3001 automatically — no CORS setup needed locally.
+
+---
+
+## Deployment Guide (Railway)
+
+In production, a single Railway service runs Express, which serves both the API routes and the compiled React frontend.
+
+### Architecture
+
+```
+Railway Service (Node.js)
+  └── Express — listens on $PORT (assigned by Railway)
+        ├── /api/*   →  API routes (orders, dashboard, auth, users)
+        └── /*       →  Serves frontend/dist/index.html (React build)
+```
+
+### Step 1 — Push Your Code to GitHub
+
+```bash
+git add .
+git commit -m "initial commit"
+git push origin main
+```
+
+### Step 2 — Create a Railway Project
+
+1. Go to [railway.app](https://railway.app) and sign in
+2. Click **New Project → Deploy from GitHub repo**
+3. Select your repository
+
+### Step 3 — Add a MySQL Database
+
+1. Inside the Railway project, click **New → Database → MySQL**
+2. Railway provisions the instance and exposes `DATABASE_URL` as an environment variable automatically
+
+### Step 4 — Set Environment Variables
+
+In Railway service → **Settings → Variables**, add:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | Auto-set by the Railway MySQL plugin — no action needed |
+| `NODE_ENV` | `production` |
+
+### Step 5 — Set the Start Command
+
+In Railway service → **Settings → Deploy**, set the **Start Command** to:
+
+```bash
+npm run start:prod
+```
+
+This command builds the React frontend first, then starts Express. With `NODE_ENV=production`, Express serves `frontend/dist` as static files alongside the API.
+
+### Step 6 — Run Database Setup (One-time)
+
+Open the Railway service shell and run:
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+`db:push` syncs `schema.prisma` to the Railway MySQL instance. `db:seed` creates the admin user.
+
+### Step 7 — Done
+
+Your app is live at the URL Railway assigns:
+
+**[https://backend-production-93f6.up.railway.app](https://backend-production-93f6.up.railway.app)**
+
+---
+
+## API Reference
+
+**Production:** `https://backend-production-93f6.up.railway.app`  
+**Local:** `http://localhost:3001`
+
+---
+
+### Health
+
+| Method | Endpoint | Response |
+|--------|----------|----------|
+| `GET` | `/api/health` | `{ "ok": true }` |
+
+---
+
+### Orders
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/orders` | Logged in | Create a new order |
+| `GET` | `/api/orders` | Logged in | List orders (with optional filters) |
+| `GET` | `/api/orders/:id` | Logged in | Get one order with all line items |
+| `PATCH` | `/api/orders/:id/status` | Logged in | Update order status |
+| `PATCH` | `/api/orders/:id` | Logged in | Update estimated delivery date |
+| `DELETE` | `/api/orders/:id` | Admin only | Delete order (cascades to line items) |
+
+**Query filters for `GET /api/orders`:**
+
+| Param | Description |
+|-------|-------------|
+| `?status=PROCESSING` | Filter by exact status value |
+| `?q=riya` | Substring match on customer name or phone |
+| `?garment=saree` | Substring match on garment type across line items |
+
+**Create Order — Request Body:**
+
+```json
+{
+  "customerName": "Riya Sharma",
+  "phone": "9876543210",
+  "estimatedDeliveryDate": "2025-06-10T00:00:00.000Z",
+  "items": [
+    { "garmentType": "Shirt",  "quantity": 2, "pricePerItem": 800  },
+    { "garmentType": "Saree",  "quantity": 1, "pricePerItem": 2000 }
+  ]
+}
+```
+
+`estimatedDeliveryDate` is optional — omit it and the API sets a sensible default automatically.  
+New orders are always created with status `PROCESSING`.
+
+**Create Order — Response `201`:**
+
+```json
+{
+  "orderId": "b3d2f1a0-...",
+  "totalBillAmount": 3600,
+  "order": { "...": "full order object with lines" }
+}
+```
+
+**Update Status — Request Body:**
+
+```json
+{ "status": "READY" }
+```
+
+Valid values: `RECEIVED` · `PROCESSING` · `READY` · `DELIVERED`
+
+---
+
+### Dashboard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/dashboard` | Returns totals and per-status counts |
+
+**Response:**
+
+```json
+{
+  "totalOrders": 12,
+  "totalRevenue": 48000,
+  "ordersByStatus": {
+    "RECEIVED": 3,
+    "PROCESSING": 4,
+    "READY": 2,
+    "DELIVERED": 3
+  }
+}
+```
+
+All four statuses are always present — zeros filled in for statuses with no orders.
+
+---
+
+### Garment Prices
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/garment-prices` | Returns the default price map used in the UI dropdown |
+
+---
+
+### Auth
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/login` | `{ username, password }` → returns user object |
+| `POST` | `/api/auth/register` | API-only; creates a `role: user` account |
+
+After login the UI sends `X-Cleanhub-User-Id` in request headers. The server re-queries the database to validate the role on every admin-protected route.
+
+---
+
+### Users (Admin Only)
+
+Requires header: `X-Cleanhub-User-Id: <admin-user-id>`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/users` | List all users |
+| `POST` | `/api/users` | Create a user |
+| `GET` | `/api/users/:id` | Get one user |
+| `PATCH` | `/api/users/:id` | Update a user |
+| `DELETE` | `/api/users/:id` | Delete a user (seeded `admin` is protected) |
+
+---
+
+## Default Garment Prices
+
+Defined in `backend/src/prices.js` and served via `GET /api/garment-prices`. The same list populates the garment dropdown in the New Order form.
+
+| Garment | Price (₹) |
+|---------|-----------|
+| Shirt | ₹800 |
+| Pants | ₹1,000 |
+| Saree | ₹2,000 |
+| Suit | ₹800 |
+| Dress | ₹1,500 |
+| Jacket | ₹2,500 |
+| T-Shirt | ₹600 |
+
+To change prices, edit `backend/src/prices.js` and restart the server.
+
+---
+
+## Postman Collection
+
+Import `postman/CleanHub.postman_collection.json` into Postman.
+
+Set the collection variable `base` before running:
+
+| Environment | Value |
+|-------------|-------|
+| Local | `http://localhost:3001` |
+| Production | `https://backend-production-93f6.up.railway.app` |
+
+The collection has pre-built requests for every endpoint with example request bodies.
+
+---
+
+## AI Usage Report
+
+### Tools Used
+
+- **Claude (Anthropic)** — primary tool for scaffolding, schema design, API logic, React UI, deployment config
+- **GitHub Copilot** — inline completions during manual edits
+
+---
+
+### Where AI Helped
+
+| Area | What AI Did |
+|------|-------------|
+| Monorepo scaffold | Generated npm workspaces structure with separate frontend/backend packages and root scripts |
+| Prisma schema | Produced `Order`, `OrderLine`, `User` models with correct relations and `onDelete: Cascade` |
+| Express routes | Scaffolded all endpoints — list with filters, create with `parseItems()` validation, status patch, dashboard aggregates |
+| `parseItems()` helper | Generated per-item validation loop (garmentType, integer quantity, non-negative price) with running total |
+| React UI | Built tabbed layout with Dashboard, New Order form (dynamic line items), Orders table (filters), and Users CRUD |
+| `seed.js` | Generated admin upsert with `bcryptjs` password hashing |
+| `authMiddleware.js` | Scaffolded `requireAdmin` with DB role re-validation on every request |
+| Production deploy | Suggested Express static-file serving pattern for single-service Railway deployment |
+
+---
+
+### Sample Prompts Used
+
+```
+"Scaffold a Node Express API with Prisma 5, MySQL, Order + OrderLine models.
+REST endpoints: create order, list with filters (status/name/garment), patch status,
+dashboard aggregates. Validate items in a parseItems() helper. No extra abstractions."
+```
+
+```
+"Add a React Vite frontend with three tabs: Dashboard (totals + status counts),
+New Order form (dynamic garment line items with price dropdown from API), and
+Orders table (status/name/garment filters). Dev proxy /api to localhost:3001."
+```
+
+```
+"Add estimated delivery date to create order — auto-set via
+defaultEstimatedDeliveryFromNow() if the client omits it. Expose
+PATCH /api/orders/:id to update it later."
+```
+
+```
+"Add a garment price map in prices.js, serve it via GET /api/garment-prices,
+and use the same data to populate the New Order dropdown."
+```
+
+---
+
+### Where AI Got It Wrong
+
+| Issue | What Happened | What I Fixed |
+|-------|--------------|--------------|
+| Database choice | AI defaulted to SQLite for quick prototyping | Switched to MySQL to match DBeaver + production requirements |
+| Node / Prisma version | Suggested Prisma 6 + Vite 5, broke on Node 16 | Pinned Prisma 5.22 and Vite 4; upgraded to Node 18 |
+| Status route method | Generated only `POST` for the status update | Added `PATCH` as primary; kept `POST` as fallback — both registered |
+| Default order status | AI set new orders to `RECEIVED` | Changed to `PROCESSING` — matches real dry-cleaning workflow where items go straight to processing |
+| Auth approach | Suggested full JWT with refresh tokens | Simplified to `X-Cleanhub-User-Id` header + DB role re-check — right-sized for demo scope |
+| Prisma nested create | Used nested `create` inside transaction | Split into explicit two-step write inside `$transaction` to avoid known MySQL + Prisma nested-create edge cases |
+| Error serialization | `res.json()` threw on non-JSON-safe Prisma error objects | Wrapped in a `sendJson()` helper that catches serialization failures gracefully |
+
+---
+
+### What I Reviewed and Changed Manually
+
+- Prisma schema field names, types, and relation constraints
+- API error handling — correct HTTP status codes, `sendJson()` wrapper for Prisma error safety
+- `parseItems()` edge cases — non-integer quantity, negative price, empty garmentType
+- Production static-file serving path (`../../frontend/dist` relative to `src/index.js`)
+- Railway start command and environment variable wiring
+- This README
+
+---
+
+## Tradeoffs & Future Improvements
+
+### What I Skipped (by design, to keep scope small)
+
+| Skipped | Reason |
+|---------|--------|
+| JWT authentication | Demo scope — header + DB role re-check is sufficient and much simpler |
+| Payment integration | Out of scope |
+| Email / SMS notifications | Not required |
+| Print receipts | No requirement |
+| Automated tests | No time in 72-hour window; all endpoints tested manually with Postman |
+| `prisma migrate` (formal migrations) | Used `db:push` for speed; fine for a demo |
+
+### What I Would Improve With More Time
+
+- **PostgreSQL** on a managed service (Supabase / PlanetScale) for better production reliability
+- **Prisma Migrate** instead of `db:push` for safe, versioned schema changes in a team
+- **Price table in DB** — let store admins configure prices without a code change
+- **Centralized RBAC middleware** instead of per-route role checks
+- **Jest unit tests** for `parseItems()` and API route handlers
+- **Playwright E2E tests** — create order → change status → verify dashboard updates
+- **Loom screen recording** — quick walkthrough of the full order flow
